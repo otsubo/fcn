@@ -7,6 +7,8 @@ import chainer
 import numpy as np
 import scipy.misc
 from sklearn.model_selection import train_test_split
+import skimage.filters
+import skimage.color
 
 import fcn
 
@@ -49,9 +51,12 @@ class JSKCableDataset(fcn.datasets.SegmentationDatasetBase):
 
         label_file = osp.join(dataset_dir, data_id, 'label.png')
         label = scipy.misc.imread(label_file, mode='L')
-        label = label.astype(np.int32)
-        label[label == 255] = -1
-        return datum, label
+        label[label == class_names.index('plug')] = 1
+        prob = label.astype(np.float32)
+        prob_filtered = skimage.filters.gaussian(prob, 5)
+        prob_filtered[prob == 1] = 1.0
+        # label[label == 255] = -1
+        return datum, prob_filtered
 
 
 if __name__ == '__main__':

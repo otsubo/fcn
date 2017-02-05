@@ -114,7 +114,7 @@ class FCN32s(chainer.Chain):
             return
 
         # testing with t or training
-        self.loss = F.softmax_cross_entropy(self.score, t, normalize=False)
+        self.loss = F.mean_squared_error(self.score, t)
         if math.isnan(self.loss.data):
             raise ValueError('loss value is nan')
 
