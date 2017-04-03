@@ -19,7 +19,7 @@ def main():
     gpu = args.gpu
     out = args.out
     resume = args.resume
-    max_iter = 30000
+    max_iter = 100000
 
     trainer = fcn.trainers.fcn32s.get_trainer(
         dataset_class=dataset.JSKCableDataset,

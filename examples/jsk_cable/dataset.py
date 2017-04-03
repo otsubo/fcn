@@ -9,6 +9,10 @@ import scipy.misc
 from sklearn.model_selection import train_test_split
 import skimage.filters
 import skimage.color
+import skimage.io
+
+import imgaug as ia
+from imgaug import augmenters as iaa
 
 import fcn
 
@@ -18,9 +22,19 @@ class JSKCableDataset(fcn.datasets.SegmentationDatasetBase):
     label_names = [
         'background',
         'cable',
-        'plug',
+        # 'plug',
     ]
     mean_bgr = np.array((104.00698793, 116.66876762, 122.67891434))
+
+
+    seq = iaa.Sequential([
+        iaa.ChangeColorspace(to_colorspace='HSV', alpha=1, from_colorspace='RGB'),
+        iaa.Add(value=[-100, 100], per_channel=True, channels=[2]),  # V
+        iaa.Add(value=[-10, 10], per_channel=True, channels=[1]),  # S
+        iaa.ChangeColorspace(to_colorspace='RGB', alpha=1, from_colorspace='HSV'),
+    ],
+    random_order=False)
+
 
     def __init__(self, data_type):
         assert data_type in ('train', 'val')
@@ -46,15 +60,20 @@ class JSKCableDataset(fcn.datasets.SegmentationDatasetBase):
         dataset_dir = chainer.dataset.get_dataset_directory('jsk_cable/JSKCableV1')
 
         img_file = osp.join(dataset_dir, data_id, 'img.png')
-        img = scipy.misc.imread(img_file)
-        datum = self.img_to_datum(img)
+        img = scipy.misc.imread(img_file).astype(np.uint8)
+        img_aug = self.seq.augment_image(img)
+        #scipy.misc.imsave('out/%04d.jpg' % i, img_aug)
+        viz = np.hstack((img, img_aug))
+        skimage.io.imsave('out/%04d.jpg' % i, viz)
+        datum = self.img_to_datum(img_aug)
 
         label_file = osp.join(dataset_dir, data_id, 'label.png')
         label = scipy.misc.imread(label_file, mode='L')
-        label[label == class_names.index('plug')] = 1
-        prob = label.astype(np.float32)
+        label[label == 2] = 1
+        prob = label.astype(np.float64)
         prob_filtered = skimage.filters.gaussian(prob, 5)
-        prob_filtered[prob == 1] = 1.0
+        prob_filtered[prob == 1] = 1.
+        prob_filtered = prob_filtered.astype(np.float32)
         # label[label == 255] = -1
         return datum, prob_filtered
 
