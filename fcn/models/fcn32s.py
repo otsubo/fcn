@@ -114,7 +114,9 @@ class FCN32s(chainer.Chain):
             return
 
         # testing with t or training
-        self.loss = F.mean_squared_error(self.score, t)
+        prob = F.softmax(self.score)
+        prob_cable = prob[:, 1, :, :]  # (n_batch, 2, height, width) -> (n_batch, height, width)
+        self.loss = F.mean_squared_error(prob_cable, t)
         if math.isnan(self.loss.data):
             raise ValueError('loss value is nan')
 

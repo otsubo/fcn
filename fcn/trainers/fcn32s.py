@@ -62,7 +62,7 @@ def get_trainer(
 
     # 3. optimizer
     if optimizer is None:
-        optimizer = chainer.optimizers.MomentumSGD(lr=1e-10, momentum=0.99)
+        optimizer = chainer.optimizers.MomentumSGD(lr=1e-10, momentum=0.75)
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer.WeightDecay(rate=0.0005))
 
