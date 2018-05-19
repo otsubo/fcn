@@ -14,9 +14,8 @@ import fcn
 class CompStructureDataset(fcn.datasets.SegmentationDatasetBase):
 
     label_names = [
-        'x_axis',
-        'y_axis',
-        'z_axis',
+        'axis',
+        'handle',
     ]
     mean_bgr = np.array((104.00698793, 116.66876762, 122.67891434))
 
@@ -32,7 +31,7 @@ class CompStructureDataset(fcn.datasets.SegmentationDatasetBase):
 
     def _get_ids(self):
         ids = []
-        dataset_dir = chainer.dataset.get_dataset_directory('comp_structure/JSKStructure1')
+        dataset_dir = chainer.dataset.get_dataset_directory('comp_structure/2017_08_01/')
         for data_id in os.listdir(dataset_dir):
             ids.append(osp.join('cable', data_id))
         return ids
