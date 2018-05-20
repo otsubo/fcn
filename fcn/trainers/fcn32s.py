@@ -54,6 +54,9 @@ def get_trainer(
     model = fcn.models.FCN32s(n_class=n_class)
     model.train = True
     fcn.util.copy_chainermodel(vgg, model)
+    np.copyto(model.conv1_1.W.data[:, :3, :, :], vgg.conv1_1.W.data)
+    np.copyto(model.conv1_1.W.data[:, 3:6, :, :], vgg.conv1_1.W.data)
+    np.copyto(model.conv1_1.b.data, vgg.conv1_1.b.data)
 
     if len(gpus) > 1 or gpus[0] >= 0:
         chainer.cuda.get_device(gpus[0]).use()

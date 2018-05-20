@@ -15,7 +15,7 @@ class FCN32s(chainer.Chain):
     def __init__(self, n_class=21):
         self.n_class = n_class
         super(self.__class__, self).__init__(
-            conv1_1=L.Convolution2D(3, 64, 3, stride=1, pad=100),
+            conv1_1=L.Convolution2D(7, 64, 3, stride=1, pad=100),
             conv1_2=L.Convolution2D(64, 64, 3, stride=1, pad=1),
 
             conv2_1=L.Convolution2D(64, 128, 3, stride=1, pad=1),

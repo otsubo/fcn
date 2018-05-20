@@ -11,6 +11,8 @@ class SegmentationDatasetBase(chainer.dataset.DatasetMixin):
 
     label_names = None
     mean_bgr = None
+    mean_d = None
+    mean_hand = None
 
     def visualize_example(self, i):
         datum, label = self.get_example(i)
@@ -40,6 +42,20 @@ class SegmentationDatasetBase(chainer.dataset.DatasetMixin):
         datum = img.astype(np.float32)
         datum = datum[:, :, ::-1]  # RGB -> BGR
         datum -= self.mean_bgr
+        datum = datum.transpose((2, 0, 1))
+        return datum
+
+    def img_to_datum_d(self, img):
+        img = img.copy()
+        datum = img.astype(np.float32)
+        datum -= self.mean_d
+        datum = datum.transpose((2, 0, 1))
+        return datum
+
+    def img_to_datum_hand(self, img):
+        img = img.copy()
+        datum = img.astype(np.float32)
+        datum -= self.mean_hand
         datum = datum.transpose((2, 0, 1))
         return datum
 
