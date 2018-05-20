@@ -20,13 +20,14 @@ class GraspPointDataset(chainer.dataset.DatasetMixin):
     mean_d = np.array((127, 127, 127))
     mean_hand = np.array((127))
 
-    def __init__(self, split, return_image=False):
+    def __init__(self, split, return_image=False, return_all=False):
         assert split in ('train', 'val')
         ids = self._get_ids()
         iter_train, iter_val = train_test_split(
             ids, test_size=0.2, random_state=np.random.RandomState(1234))
         self.ids = iter_train if split == 'train' else iter_val
         self._return_image = return_image
+        self._return_all = return_all
 
     def __len__(self):
         return len(self.ids)
@@ -80,6 +81,10 @@ class GraspPointDataset(chainer.dataset.DatasetMixin):
 
         img_file_hand = osp.join(dataset_dir, data_id, 'img_hand.png')
         img_hand = scipy.misc.imread(img_file_hand)
+        assert img_hand.ndim == 2
+        zero_ratio = 1. * (img_hand == 0).sum() / img_hand.size
+        if zero_ratio < 0.95:
+            img_hand = (~(img_hand > 127)).astype(np.uint8) * 255
         img_hand = img_hand.reshape(544, 1024, 1)
         datum_hand = self.img_to_datum_hand(img_hand)
 
@@ -89,15 +94,26 @@ class GraspPointDataset(chainer.dataset.DatasetMixin):
         label = scipy.misc.imread(label_file, mode='L')
         label = label.astype(np.int32)
         label[label == 255] = -1
-        if self._return_image:
+        if self._return_all:
+            return datum, label, img_rgb, img_d_jet, img_hand[:, :, 0]
+        elif self._return_image:
             return datum, label, img_rgb
-        return datum, label
+        else:
+            return datum, label
 
 
-# if __name__ == '__main__':
-#     import matplotlib.pyplot as plt
-#     dataset = GraspPointDataset('val')
-#     for i in xrange(len(dataset)):
-#         datum, label = dataset.get_example(i)
-#         plt.imshow(labelviz)
-#         plt.show()
+if __name__ == '__main__':
+    import matplotlib.pyplot as plt
+    dataset = GraspPointDataset('train', return_all=True)
+    for i in range(len(dataset)):
+        _, label, img_rgb, img_d_jet, img_hand = dataset.get_example(i)
+        labelviz = fcn.utils.label2rgb(label, img=img_rgb, label_names=dataset.class_names)
+        plt.subplot(221)
+        plt.imshow(img_rgb)
+        plt.subplot(222)
+        plt.imshow(img_d_jet)
+        plt.subplot(223)
+        plt.imshow(img_hand, cmap='gray')
+        plt.subplot(224)
+        plt.imshow(labelviz)
+        plt.show()
