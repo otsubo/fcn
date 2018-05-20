@@ -89,6 +89,7 @@ class GraspPointDataset(chainer.dataset.DatasetMixin):
         datum_hand = self.img_to_datum_hand(img_hand)
 
         datum = np.vstack((datum_rgb, datum_d, datum_hand))
+        datum = datum_rgb
 
         label_file = osp.join(dataset_dir, data_id, 'label.png')
         label = scipy.misc.imread(label_file, mode='L')

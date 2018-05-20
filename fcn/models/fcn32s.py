@@ -22,7 +22,7 @@ class FCN32s(chainer.Chain):
         }
         super(FCN32s, self).__init__()
         with self.init_scope():
-            self.conv1_1 = L.Convolution2D(7, 64, 3, 1, 100, **kwargs)
+            self.conv1_1 = L.Convolution2D(3, 64, 3, 1, 100, **kwargs)
             self.conv1_2 = L.Convolution2D(64, 64, 3, 1, 1, **kwargs)
 
             self.conv2_1 = L.Convolution2D(64, 128, 3, 1, 1, **kwargs)
@@ -130,13 +130,7 @@ class FCN32s(chainer.Chain):
 
     def init_from_vgg16(self, vgg16):
         for l in self.children():
-            if l.name == 'conv1_1':
-                l1 = getattr(vgg16, l.name)
-                l2 = getattr(self, l.name)
-                np.copyto(l2.W.data[:, :3, :, :], l1.W.data)
-                np.copyto(l2.W.data[:, 3:6, :, :], l1.W.data)
-                np.copyto(l2.b.data, l1.b.data)
-            elif l.name.startswith('conv'):
+            if l.name.startswith('conv'):
                 l1 = getattr(vgg16, l.name)
                 l2 = getattr(self, l.name)
                 assert l1.W.shape == l2.W.shape
