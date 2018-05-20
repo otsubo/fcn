@@ -13,12 +13,11 @@ import fcn
 
 class SemanticSegmentationVisReport(training.Extension):
 
-    def __init__(self, pred_func, iterator, transform, class_names,
+    def __init__(self, pred_func, iterator, class_names,
                  converter=chainer.dataset.concat_examples,
                  device=None, shape=(3, 3)):
         self.pred_func = pred_func
         self._iterator = iterator
-        self._transform = transform
         self._class_names = class_names
         self.converter = converter
         self.device = device
@@ -35,9 +34,8 @@ class SemanticSegmentationVisReport(training.Extension):
 
         vizs = []
         for batch in it:
-            img, lbl_true = zip(*batch)
-            batch = map(self._transform, batch)
-            x = trainer.updater.converter(zip(*batch)[0], self.device)
+            x_data, lbl_true, img = zip(*batch)
+            x = trainer.updater.converter(x_data, self.device)
             with chainer.using_config('enable_backprop', False), \
                     chainer.using_config('train', False):
                 score = self.pred_func(x)
