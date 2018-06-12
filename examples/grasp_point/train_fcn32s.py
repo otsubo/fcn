@@ -94,11 +94,11 @@ def main():
     args = parser.parse_args()
 
     args.model = 'FCN32s'
-    args.lr = 1e-10
+    args.lr = 1e-8
     args.momentum = 0.99
     args.weight_decay = 0.0005
 
-    args.max_iteration = 100000
+    args.max_iteration = 25000
     args.interval_print = 20
     args.interval_eval = 100
 

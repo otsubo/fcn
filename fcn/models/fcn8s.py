@@ -320,6 +320,13 @@ class FCN8sAtOnce(FCN8s):
 
     def init_from_vgg16(self, vgg16):
         for l in self.children():
+            # if l.name == 'conv1_1':
+            #     l1 = getattr(vgg16, l.name)
+            #     l2 = getattr(self, l.name)
+            #     np.copyto(l2.W.data[:, :3, :, :], l1.W.data)
+            #     np.copyto(l2.W.data[:, 3:6, :, :], l1.W.data)
+            #     np.copyto(l2.b.data, l1.b.data)
+            #elif l.name.startswith('conv'):
             if l.name.startswith('conv'):
                 l1 = getattr(vgg16, l.name)
                 l2 = getattr(self, l.name)
