@@ -64,36 +64,44 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         assert ann_id in ('folding')
 
         dataset_dir = chainer.dataset.get_dataset_directory(
-            'sample/folding')
+            'sample/folding_datasets')
 
-        img_file_rgb = osp.join(dataset_dir, data_id, 'image.png')
-        img_rgb = scipy.misc.imread(img_file_rgb)
-        datum_rgb = self.img_to_datum(img_rgb)
+        imgs = np.array(())
+        for i in range(4):
+            img_file_rgb = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i],'image.png')
+            img_rgb = scipy.misc.imread(img_file_rgb)
+            datum_rgb = self.img_to_datum(img_rgb)
+            imgs = np.vstack(imgs, datum_rgb)
 
-        img_file_d = osp.join(dataset_dir, data_id, 'depth.npz')
-        img_d = np.load(img_file_d)
-        img_d_data = img_d['arr_0']
-        img_d_jet = fcn.image.colorize_depth(img_d_data, 0.0, 2.0)
-        datum_d = self.img_to_datum_d(img_d_jet)
+        # imgs_d = np.array(())
+        # for i in range(4):
+        #     img_file_d = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i], 'depth.npz')
+        #     img_d = np.load(img_file_d)
+        #     img_d_data = img_d['arr_0']
+        #     img_d_jet = fcn.image.colorize_depth(img_d_data, 0.0, 2.0)
+        #     datum_d = self.img_to_datum_d(img_d_jet)
 
 
-        datum = np.vstack((datum_rgb, datum_d))
+        #datum = np.vstack((datum_rgb, datum_d))
 
-        label_file = osp.join(dataset_dir, data_id, 'label.png')
-        label = scipy.misc.imread(label_file, mode='L')
-        label = label.astype(np.int32)
-        label[label == 255] = -1
-        if self._return_all:
-            return datum, label, img_rgb, img_d_jet, img_hand[:, :, 0]
-        elif self._return_image:
-            return datum, label, img_rgb
-        else:
-            return datum, label
+        labels = np.array(())
+        for i in range(4):
+            label_file = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i], 'label.png')
+            label = scipy.misc.imread(label_file, mode='L')
+            label = label.astype(np.int32)
+            label[label == 255] = -1
+            labels = np.vstack(labels, label)
+        # if self._return_all:
+        #     return datum, label, img_rgb, img_d_jet, img_hand[:, :, 0]
+        # elif self._return_image:
+        #     return datum, label, img_rgb
+        # else:
+        return imgs, labels
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
-    dataset = GraspPointDataset('train', return_all=True)
+    dataset = FoldingDataset('train', return_all=True)
     for i in range(len(dataset)):
         _, label, img_rgb, img_d_jet = dataset.get_example(i)
         labelviz = fcn.utils.label2rgb(label, img=img_rgb, label_names=dataset.class_names)
