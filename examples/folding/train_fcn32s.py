@@ -19,16 +19,16 @@ here = osp.dirname(osp.abspath(__file__))
 def get_data():
     from dataset import GraspPointDataset
 
-    dataset_train = GraspPointDataset(split='train')
+    dataset_train = FoldingDataset(split='train')
     class_names = dataset_train.class_names
     iter_train = chainer.iterators.SerialIterator(
         dataset_train, batch_size=1)
 
-    dataset_valid_raw = GraspPointDataset(split='val', return_image=True)
+    dataset_valid_raw = FoldingDataset(split='val', return_image=True)
     iter_valid_raw = chainer.iterators.SerialIterator(
         dataset_valid_raw, batch_size=1, repeat=False, shuffle=False)
 
-    dataset_valid = GraspPointDataset(split='val')
+    dataset_valid = FoldingDataset(split='val')
     iter_valid = chainer.iterators.SerialIterator(
         dataset_valid, batch_size=1, repeat=False, shuffle=False)
 
