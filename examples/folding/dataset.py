@@ -27,7 +27,7 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
     mean_d = np.array((127, 127, 127))
     mean_hand = np.array((127))
 
-    def __init__(self, split, return_image=False, return_all=False):
+    def __init__(self, split, return_image=False, return_all=False, img_viz=False):
         assert split in ('train', 'val')
         video_dirs = self._get_video_dirs()
         video_dirs_train, video_dirs_val = train_test_split(
@@ -38,6 +38,7 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         self.video_dirs = video_dirs_train if split == 'train' else video_dirs_val
         self._return_image = return_image
         self._return_all = return_all
+        self._img_viz = img_viz
 
     def __len__(self):
         return len(self.video_dirs)
@@ -85,15 +86,18 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
             frame_dir = osp.join(video_dir, frame_dir)
             img_file = osp.join(frame_dir, 'image.png')
             img = scipy.misc.imread(img_file)
-            imgs.append(img)  # (H, W, 3)
 
             json_file = osp.join(frame_dir, 'image.json')
             lbl = self.json_file_to_lbl(img.shape, json_file)
+            if (not self._img_viz):
+                img = self.img_to_datum(img)
+            imgs.append(img)  # (H, W, 3)
             lbls.append(lbl)
         imgs = np.array(imgs)  # [(H, W, 3), (H, W, 3), ...]
         lbls = np.array(lbls)  # [(H, W), (H, W), ...]
+        #print(lbls.shape)
 
-        N, H, W, C = imgs.shape
+        N, C, H, W = imgs.shape
         assert N == 4
         assert C == 3
         assert lbls.shape == (N, H, W)
@@ -161,13 +165,13 @@ if __name__ == '__main__':
 
         assert imgs.shape == (N, H, W, C)
         assert lbls.shape == (N, H, W)
-
-        for img, lbl in zip(imgs, lbls):
-            viz = fcn.utils.label2rgb(lbl, img, label_names=dataset.class_names)
-            viz = np.hstack((img, viz))
-            cv2.imshow(__file__, viz[:, :, ::-1])
-            if cv2.waitKey(0) == ord('q'):
-                quit()
+        if dataset._img_viz :
+            for img, lbl in zip(imgs, lbls):
+                viz = fcn.utils.label2rgb(lbl, img, label_names=dataset.class_names)
+                viz = np.hstack((img, viz))
+                cv2.imshow(__file__, viz[:, :, ::-1])
+                if cv2.waitKey(0) == ord('q'):
+                    quit()
         # _, label, img_rgb, img_d_jet = dataset.get_example(i)
         # labelviz = fcn.utils.label2rgb(label, img=img_rgb, label_names=dataset.class_names)
         # plt.subplot(221)

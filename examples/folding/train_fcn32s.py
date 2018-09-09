@@ -17,7 +17,7 @@ here = osp.dirname(osp.abspath(__file__))
 
 
 def get_data():
-    from dataset import GraspPointDataset
+    from dataset import FoldingDataset
 
     dataset_train = FoldingDataset(split='train')
     class_names = dataset_train.class_names
