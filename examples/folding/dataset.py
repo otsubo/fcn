@@ -35,13 +35,18 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
             test_size=0.2,
             random_state=np.random.RandomState(1234),
         )
-        self.video_dirs = video_dirs_train if split == 'train' else video_dirs_val
+        video_dirs = video_dirs_train if split == 'train' else video_dirs_val
+        #self.video_dirs = []
+        for video_dir in self.video_dirs:
+            n_frames = len(os.list(video_dir))
+            self.video_dirs.append((video_dir, n_frames))
         self._return_image = return_image
         self._return_all = return_all
         self._img_viz = img_viz
 
     def __len__(self):
-        return len(self.video_dirs)
+        # return len(self.video_dirs) * 4
+        return sum(nf for vd, nf in self.video_dirs)
 
     def _get_video_dirs(self):
         # dataset_dir = chainer.dataset.get_dataset_directory(
@@ -78,8 +83,9 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         return lbl
 
     def get_example(self, i):
+        video_index = i // len(self.video_dirs)
+        frame_index = i % len(self.video_dirs)
         video_dir = self.video_dirs[i]
-
         imgs = []
         lbls = []
         for frame_dir in sorted(os.listdir(video_dir)):
@@ -112,30 +118,6 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         # print(video_dir)
         # quit()
 
-        # ann_id, data_id = self.ids[i].split('/')
-        # assert ann_id in ('folding')
-
-        # dataset_dir = chainer.dataset.get_dataset_directory(
-        #     'sample/folding_datasets')
-
-        # imgs = np.array(())
-        # for i in range(4):
-        #     img_file_rgb = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i],'image.png')
-        #     img_rgb = scipy.misc.imread(img_file_rgb)
-        #     datum_rgb = self.img_to_datum(img_rgb)
-        #     imgs = np.vstack(imgs, datum_rgb)
-
-        # # imgs_d = np.array(())
-        # # for i in range(4):
-        # #     img_file_d = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i], 'depth.npz')
-        # #     img_d = np.load(img_file_d)
-        # #     img_d_data = img_d['arr_0']
-        # #     img_d_jet = fcn.image.colorize_depth(img_d_data, 0.0, 2.0)
-        # #     datum_d = self.img_to_datum_d(img_d_jet)
-
-
-        # #datum = np.vstack((datum_rgb, datum_d))
-
         # labels = np.array(())
         # for i in range(4):
         #     label_file = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i], 'label.png')
@@ -155,8 +137,10 @@ if __name__ == '__main__':
     import cv2
     import matplotlib.pyplot as plt
     dataset = FoldingDataset('train', return_all=True)
+    import ipdb; ipdb.set_trace()
     for i in range(len(dataset)):
         imgs, lbls = dataset.get_example(i)
+        #print(imgs.shape, lbls.shape)
         NxC, H, W = imgs.shape
         C = 3
         N = NxC // C
