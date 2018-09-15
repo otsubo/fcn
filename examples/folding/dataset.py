@@ -3,6 +3,8 @@ import os
 import os.path as osp
 
 import chainer
+import cv2
+
 import labelme
 import numpy as np
 import scipy.misc
@@ -11,6 +13,8 @@ from sklearn.model_selection import train_test_split
 import fcn
 import fcn.image
 
+width = 640
+hight = 480
 
 class FoldingDataset(chainer.dataset.DatasetMixin):
 
@@ -26,48 +30,42 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
     mean_bgr = np.array((104.00698793, 116.66876762, 122.67891434))
     mean_d = np.array((127, 127, 127))
     mean_hand = np.array((127))
-
+    video_dirs = []
+    n_frames = []
+    videos = []
     def __init__(self, split, return_image=False, return_all=False, img_viz=False):
         assert split in ('train', 'val')
-        video_dirs = self._get_video_dirs()
+        self.video_dirs = sorted(self._get_video_dirs())
         video_dirs_train, video_dirs_val = train_test_split(
-            video_dirs,
+            self.video_dirs,
             test_size=0.2,
             random_state=np.random.RandomState(1234),
         )
-        video_dirs = video_dirs_train if split == 'train' else video_dirs_val
-        #self.video_dirs = []
+        self.video_dirs = video_dirs_train if split == 'train' else video_dirs_val
         for video_dir in self.video_dirs:
-            n_frames = len(os.list(video_dir))
-            self.video_dirs.append((video_dir, n_frames))
+            self.n_frames.append(len(os.listdir(video_dir)))
         self._return_image = return_image
         self._return_all = return_all
         self._img_viz = img_viz
 
     def __len__(self):
-        # return len(self.video_dirs) * 4
-        return sum(nf for vd, nf in self.video_dirs)
+        return len(self.video_dirs) * 4
+        #return sum(nf for vd, nf in self.video_dirs)
+        #return sum(self.n_frames)
 
     def _get_video_dirs(self):
         # dataset_dir = chainer.dataset.get_dataset_directory(
         #     'sample/folding')
         import glob
         dataset_dir = '/home/otsubo/.ros/jsk_data/sample/folding_datasets'
-        video_dirs = glob.glob(osp.join(dataset_dir, 'folding*'))
-        return video_dirs 
+        self.video_dirs = glob.glob(osp.join(dataset_dir, 'folding*'))
+        return self.video_dirs
 
     def img_to_datum(self, img):
         img = img.copy()
         datum = img.astype(np.float32)
         datum = datum[:, :, ::-1]  # RGB -> BGR
         datum -= self.mean_bgr
-        datum = datum.transpose((2, 0, 1))
-        return datum
-
-    def img_to_datum_d(self, img):
-        img = img.copy()
-        datum = img.astype(np.float32)
-        datum -= self.mean_d
         datum = datum.transpose((2, 0, 1))
         return datum
 
@@ -83,87 +81,88 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         return lbl
 
     def get_example(self, i):
-        video_index = i // len(self.video_dirs)
-        frame_index = i % len(self.video_dirs)
-        video_dir = self.video_dirs[i]
+        video_index = i // self.n_frames[0]
+        frame_index = i % self.n_frames[0]
+        video_dir = self.video_dirs[video_index]
         imgs = []
-        lbls = []
-        for frame_dir in sorted(os.listdir(video_dir)):
-            frame_dir = osp.join(video_dir, frame_dir)
-            img_file = osp.join(frame_dir, 'image.png')
+        imgs_raw = []
+        lbl = []
+        for frame_dir in sorted(os.listdir(video_dir))[:frame_index + 1]:
+            frame = osp.join(video_dir, frame_dir)
+            img_file = osp.join(frame, 'image.png')
             img = scipy.misc.imread(img_file)
+            imgs_raw.append(img)
+            img = self.img_to_datum(img)
+            imgs.append(img)
+        for zero_img_index in range(self.n_frames[video_index] - (frame_index + 1)):
+            img = np.zeros((hight, width, 3), np.uint8)
+            imgs_raw.append(img)
+            img = self.img_to_datum(img)
+            imgs.append(img)
+            #import ipdb; ipdb.set_trace()
+        #lbl_indices = frame_index
+        json_file = osp.join(video_dir, (sorted(os.listdir(video_dir)))[frame_index], 'image.json')
+        img_shape = img.shape[1:3]
+        lbl = self.json_file_to_lbl(img_shape, json_file)
 
-            json_file = osp.join(frame_dir, 'image.json')
-            lbl = self.json_file_to_lbl(img.shape, json_file)
-            if (not self._img_viz):
-                img = self.img_to_datum(img)
-            imgs.append(img)  # (H, W, 3)
-            lbls.append(lbl)
         imgs = np.array(imgs)  # [(H, W, 3), (H, W, 3), ...]
-        lbls = np.array(lbls)  # [(H, W), (H, W), ...]
-        #print(lbls.shape)
+        imgs = imgs.reshape(12, 480, 640)
+        lbl = np.array(lbl)  # [(H, W), (H, W), ...]
+        imgs_raw = np.array(imgs_raw)
+        img_raw = imgs_raw[frame_index]
+        #import ipdb; ipdb.set_trace()
+        if self._return_image:
+            return imgs, lbl, img_raw
+        else:
+            return imgs, lbl
 
-        N, C, H, W = imgs.shape
-        assert N == 4
-        assert C == 3
-        assert lbls.shape == (N, H, W)
 
-        imgs = imgs.transpose(0, 3, 1, 2).reshape(N * C, H, W)  # L.Convolution2D(12, 64, ksize=3, stride=1, pad=1)
-
-        assert imgs.shape == (N * C, H, W)
-        assert lbls.shape == (N, H, W)
-
-        return imgs, lbls
-
-        # print(video_dir)
-        # quit()
-
-        # labels = np.array(())
-        # for i in range(4):
-        #     label_file = osp.join(dataset_dir, data_id, sorted(os.listdir('.'))[i], 'label.png')
-        #     label = scipy.misc.imread(label_file, mode='L')
-        #     label = label.astype(np.int32)
-        #     label[label == 255] = -1
-        #     labels = np.vstack(labels, label)
-        # # if self._return_all:
-        # #     return datum, label, img_rgb, img_d_jet, img_hand[:, :, 0]
-        # # elif self._return_image:
-        # #     return datum, label, img_rgb
-        # # else:
-        # return imgs, labels
 
 
 if __name__ == '__main__':
-    import cv2
     import matplotlib.pyplot as plt
-    dataset = FoldingDataset('train', return_all=True)
-    import ipdb; ipdb.set_trace()
-    for i in range(len(dataset)):
-        imgs, lbls = dataset.get_example(i)
+    dataset = FoldingDataset('train', return_all=True, img_viz=False)
+    imgs_datum = []
+    lbl_datum = []
+    lbl_indices_datum = []
+    for i in range(sum(dataset.n_frames)):
+        imgs, lbl  = dataset.get_example(i)
+        imgs_datum.append(imgs)
+        lbl_datum.append(lbl)
+        #lbl_indices_datum.append(lbl_indices)
+    imgs_datum = np.array(imgs_datum)
+    #imgs_datum = imgs_datum.reshape(16, 4, 480, 640, 3)
+    lbl_datum = np.array(lbl_datum)
+    lbl_datum = lbl_datum.reshape(16, 480, 640)
+    #lbl_indices_datum = np.array(lbl_indices_datum)
+    #lbl_indices_datum = lbl_indices_datum.reshape(16)
         #print(imgs.shape, lbls.shape)
-        NxC, H, W = imgs.shape
-        C = 3
-        N = NxC // C
-        imgs = imgs.reshape(N, C, H, W)
-        imgs = imgs.transpose(0, 2, 3, 1)
-
-        assert imgs.shape == (N, H, W, C)
-        assert lbls.shape == (N, H, W)
-        if dataset._img_viz :
-            for img, lbl in zip(imgs, lbls):
-                viz = fcn.utils.label2rgb(lbl, img, label_names=dataset.class_names)
-                viz = np.hstack((img, viz))
-                cv2.imshow(__file__, viz[:, :, ::-1])
-                if cv2.waitKey(0) == ord('q'):
-                    quit()
-        # _, label, img_rgb, img_d_jet = dataset.get_example(i)
-        # labelviz = fcn.utils.label2rgb(label, img=img_rgb, label_names=dataset.class_names)
-        # plt.subplot(221)
-        # plt.imshow(img_rgb)
-        # plt.subplot(222)
-        # plt.imshow(img_d_jet)
-        # plt.subplot(223)
-        # plt.imshow(img_hand, cmap='gray')
-        # plt.subplot(224)
-        # plt.imshow(labelviz)
-        # plt.show()
+    # NxC, H, W = imgs.shape
+    # C = 3
+    # N = NxC // C
+    #imgs = imgs.reshape(N, C, H, W)
+    #imgs = imgs.transpose(0, 2, 3, 1)
+    #import ipdb; ipdb.set_trace()
+    #assert imgs.shape == (N, H, W, C)
+    #assert lbls.shape == (N, H, W)
+    # if dataset._img_viz :
+    #     for img, lbl in zip(imgs, lbl):
+    #         viz = fcn.utils.label2rgb(lbl, img, label_names=dataset.class_names)
+    #         viz = np.hstack((img, viz))
+    #         cv2.imshow(__file__, viz[:, :, ::-1])
+    #         if cv2.waitKey(0) == ord('q'):
+    #             quit()
+    if dataset._img_viz:
+    #import ipdb; ipdb.set_trace()
+        for i in range(16):
+            img = imgs_datum[i,:,:,:][0,:,:,:]
+            img2 = imgs_datum[i,:,:,:][1,:,:,:]
+            img3 = imgs_datum[i,:,:,:][2,:,:,:]
+            img4 = imgs_datum[i,:,:,:][3,:,:,:]
+            lbl = lbl_datum[i,:,:]
+            viz_img = imgs_datum[i,:,:,:][i % 4,:,:,:]
+            labelviz = fcn.utils.label2rgb(lbl, img=viz_img, label_names=dataset.class_names)
+            viz = fcn.utils.get_tile_image([img, img2, img3, img4, labelviz])
+            cv2.imshow(__file__, viz[:, :, ::-1])
+            if cv2.waitKey(0) == ord('q'):
+                quit()

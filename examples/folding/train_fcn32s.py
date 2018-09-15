@@ -135,6 +135,7 @@ def main():
     # trainer
     trainer = get_trainer(optimizer, iter_train, iter_valid, iter_valid_raw,
                           class_names, args)
+    #import ipdb; ipdb.set_trace()
     trainer.run()
 
 
