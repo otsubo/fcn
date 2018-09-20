@@ -32,9 +32,10 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
     mean_hand = np.array((127))
     video_dirs = []
     n_frames = []
-    videos = []
     def __init__(self, split, return_image=False, return_all=False, img_viz=False):
         assert split in ('train', 'val')
+        self.video_dirs = []
+        self.n_frames = []
         self.video_dirs = sorted(self._get_video_dirs())
         video_dirs_train, video_dirs_val = train_test_split(
             self.video_dirs,
@@ -56,13 +57,10 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
     def _get_video_dirs(self):
         self.vidoe_dirs = []
         d_path = '/home/otsubo/.chainer/dataset/folding_datasets'
-        #self.video_dirs = glob.glob(osp.join(dataset_dir, 'folding*'))
-        #self.video_dirs = glob.glob(osp.join(dataset_dir))
         dataset_dir = chainer.dataset.get_dataset_directory(
             'folding_datasets')
-        for video_dir in os.listdir(dataset_dir):
+        for video_dir in sorted(os.listdir(dataset_dir)):
             self.video_dirs.append(osp.join(d_path, video_dir))
-        #self.video_dirs = osp.join(d_path ,os.listdir(dataset_dir))
         return self.video_dirs
 
     def img_to_datum(self, img):
@@ -108,7 +106,7 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         img_shape = img.shape[1:3]
         #img_shape = (480, 640)
         lbl = self.json_file_to_lbl(img_shape, json_file)
-
+        #print('lbl size {}'.format(lbl.shape))
         imgs = np.array(imgs)  # [(H, W, 3), (H, W, 3), ...]
         imgs = imgs.reshape(12, 480, 640)
         lbl = np.array(lbl)  # [(H, W), (H, W), ...]
@@ -125,37 +123,17 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     dataset = FoldingDataset('train', return_all=True, img_viz=False)
-    dataset_val = FoldingDataset('val', return_all=True, img_viz=False)
-    print('train data video_dirs {}\n'.format(dataset.video_dirs))
-    print('val data video_dirs {}\n'.format(dataset_val.video_dirs))
     imgs_datum = []
     lbl_datum = []
     for i in range(sum(dataset.n_frames)):
         imgs, lbl  = dataset.get_example(i)
         imgs_datum.append(imgs)
         lbl_datum.append(lbl)
-        #lbl_indices_datum.append(lbl_indices)
     imgs_datum = np.array(imgs_datum)
     imgs_datum = imgs_datum.reshape(48, 4, 480, 640, 3)
     lbl_datum = np.array(lbl_datum)
     lbl_datum = lbl_datum.reshape(48, 480, 640)
-    # NxC, H, W = imgs.shape
-    # C = 3
-    # N = NxC // C
-    #imgs = imgs.reshape(N, C, H, W)
-    #imgs = imgs.transpose(0, 2, 3, 1)
-    #import ipdb; ipdb.set_trace()
-    #assert imgs.shape == (N, H, W, C)
-    #assert lbls.shape == (N, H, W)
-    # if dataset._img_viz :
-    #     for img, lbl in zip(imgs, lbl):
-    #         viz = fcn.utils.label2rgb(lbl, img, label_names=dataset.class_names)
-    #         viz = np.hstack((img, viz))
-    #         cv2.imshow(__file__, viz[:, :, ::-1])
-    #         if cv2.waitKey(0) == ord('q'):
-    #             quit()
     if dataset._img_viz:
-    #import ipdb; ipdb.set_trace()
         for i in range(48):
             img = imgs_datum[i,:,:,:][0,:,:,:]
             img2 = imgs_datum[i,:,:,:][1,:,:,:]
