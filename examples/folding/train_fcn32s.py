@@ -17,18 +17,20 @@ here = osp.dirname(osp.abspath(__file__))
 
 
 def get_data():
-    from dataset import FoldingDataset
+    from dataset_aug import FoldingDataset
 
-    dataset_train = FoldingDataset(split='train')
+    video_dirs_copy = []
+    dataset_train = FoldingDataset(split='train' , img_aug=True)
+    video_dirs_copy = dataset_train.video_dirs[:]
     class_names = dataset_train.class_names
     iter_train = chainer.iterators.SerialIterator(
         dataset_train, batch_size=1)
 
-    dataset_valid_raw = FoldingDataset(split='val', return_image=True)
+    dataset_valid_raw = FoldingDataset(split='val', return_image=True, img_aug=False)
     iter_valid_raw = chainer.iterators.SerialIterator(
         dataset_valid_raw, batch_size=1, repeat=False, shuffle=False)
 
-    dataset_valid = FoldingDataset(split='val')
+    dataset_valid = FoldingDataset(split='val', img_aug=False)
     iter_valid = chainer.iterators.SerialIterator(
         dataset_valid, batch_size=1, repeat=False, shuffle=False)
 
@@ -135,9 +137,7 @@ def main():
     # trainer
     trainer = get_trainer(optimizer, iter_train, iter_valid, iter_valid_raw,
                           class_names, args)
-    #import ipdb; ipdb.set_trace()
     trainer.run()
-
 
 if __name__ == '__main__':
     main()
