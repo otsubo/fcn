@@ -100,7 +100,7 @@ def main():
     args.momentum = 0.99
     args.weight_decay = 0.0005
 
-    args.max_iteration = 100000
+    args.max_iteration = 200000
     args.interval_print = 20
     args.interval_eval = 100
 

@@ -24,11 +24,12 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
 
     class_names = [
         '__background__',
-        'l_grasp',
-        'r_grasp',
+        'grasp',
+        's_grasp',
+        'v_grasp',
+        'slide_target',
         'axis',
-        'l_slide',
-        'r_slide'
+        'v_axis'
 
     ]
     mean_bgr = np.array((104.00698793, 116.66876762, 122.67891434))
@@ -36,7 +37,7 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
     mean_hand = np.array((127))
     video_dirs = []
     n_frames = []
-    def __init__(self, split, return_image=False, return_all=False, img_viz=False, img_aug=True):
+    def __init__(self, split, return_image=False, return_all=False, img_viz=False, img_aug=False):
         assert split in ('train', 'val')
         self.split = split
         self.video_dirs = []
@@ -44,12 +45,12 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         self.video_dirs = sorted(self._get_video_dirs())
         video_dirs_train, video_dirs_val = train_test_split(
             self.video_dirs,
-            test_size=0.5,
+            test_size=0.2,
             random_state=np.random.RandomState(1234),
         )
         video_dirs_copy = []
         video_dirs_copy = video_dirs_train[:]
-        for i in range(15):
+        for i in range(5):
             video_dirs_train.extend(video_dirs_copy)
         self.video_dirs = video_dirs_train if split == 'train' else video_dirs_val
         for video_dir in self.video_dirs:
@@ -67,9 +68,9 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
     def _get_video_dirs(self):
         self.vidoe_dirs = []
         video_dirs_copy = []
-        d_path = '/home/otsubo/.chainer/dataset/folding_datasets'
+        d_path = '/home/otsubo/.chainer/dataset/folding_datasets_v7'
         dataset_dir = chainer.dataset.get_dataset_directory(
-            'folding_datasets')
+            'folding_datasets_v7')
         for video_dir in sorted(os.listdir(dataset_dir)):
             self.video_dirs.append(osp.join(d_path, video_dir))
         # if self.split == 'train':
@@ -120,7 +121,7 @@ class FoldingDataset(chainer.dataset.DatasetMixin):
         lbl = []
         for frame_dir in sorted(os.listdir(video_dir))[:frame_index + 1]:
             frame = osp.join(video_dir, frame_dir)
-            img_file = osp.join(frame, 'image.png')
+            img_file = osp.join(frame, 'img_seg.png')
             img = scipy.misc.imread(img_file)
             imgs_raw.append(img)
             # if not self._img_viz:

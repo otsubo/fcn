@@ -22,7 +22,7 @@ class FCN8s(chainer.Chain):
         }
         super(FCN8s, self).__init__()
         with self.init_scope():
-            self.conv1_1 = L.Convolution2D(3, 64, 3, 1, 100, **kwargs)
+            self.conv1_1 = L.Convolution2D(12, 64, 3, 1, 100, **kwargs)
             self.conv1_2 = L.Convolution2D(64, 64, 3, 1, 1, **kwargs)
 
             self.conv2_1 = L.Convolution2D(64, 128, 3, 1, 1, **kwargs)
@@ -168,17 +168,43 @@ class FCN8s(chainer.Chain):
         chainer.report({'loss': loss}, self)
         return loss
 
-    def init_from_fcn16s(self, fcn16s):
-        for l1 in fcn16s.children():
-            try:
-                l2 = getattr(self, l1.name)
-            except Exception:
-                continue
-            assert l1.W.shape == l2.W.shape
-            l2.W.data[...] = l1.W.data[...]
-            if l2.b is not None:
+    # def init_from_fcn16s(self, fcn16s):
+    #     for l1 in fcn16s.children():
+    #         try:
+    #             l2 = getattr(self, l1.name)
+    #         except Exception:
+    #             continue
+    #         assert l1.W.shape == l2.W.shape
+    #         l2.W.data[...] = l1.W.data[...]
+    #         if l2.b is not None:
+    #             assert l1.b.shape == l2.b.shape
+    #             l2.b.data[...] = l1.b.data[...]
+
+    def init_from_vgg16(self, vgg16):
+        for l in self.children():
+            if l.name == 'conv1_1':
+                l1 = getattr(vgg16, l.name)
+                l2 = getattr(self, l.name)
+                np.copyto(l2.W.data[:, :3, :, :], l1.W.data)
+                np.copyto(l2.W.data[:, 3:6, :, :], l1.W.data)
+                np.copyto(l2.W.data[:, 6:9, :, :], l1.W.data)
+                np.copyto(l2.W.data[:, 9:12, :, :], l1.W.data)
+                np.copyto(l2.b.data, l1.b.data)
+            elif l.name.startswith('conv'):
+                l1 = getattr(vgg16, l.name)
+                l2 = getattr(self, l.name)
+                assert l1.W.shape == l2.W.shape
                 assert l1.b.shape == l2.b.shape
+                l2.W.data[...] = l1.W.data[...]
                 l2.b.data[...] = l1.b.data[...]
+            elif l.name in ['fc6', 'fc7']:
+                l1 = getattr(vgg16, l.name)
+                l2 = getattr(self, l.name)
+                assert l1.W.size == l2.W.size
+                assert l1.b.size == l2.b.size
+                l2.W.data[...] = l1.W.data.reshape(l2.W.shape)[...]
+                l2.b.data[...] = l1.b.data.reshape(l2.b.shape)[...]
+
 
     @classmethod
     def download(cls):
@@ -318,9 +344,34 @@ class FCN8sAtOnce(FCN8s):
         chainer.report({'loss': loss}, self)
         return loss
 
+    # def init_from_vgg16(self, vgg16):
+    #     for l in self.children():
+    #         if l.name.startswith('conv'):
+    #             l1 = getattr(vgg16, l.name)
+    #             l2 = getattr(self, l.name)
+    #             assert l1.W.shape == l2.W.shape
+    #             assert l1.b.shape == l2.b.shape
+    #             l2.W.data[...] = l1.W.data[...]
+    #             l2.b.data[...] = l1.b.data[...]
+    #         elif l.name in ['fc6', 'fc7']:
+    #             l1 = getattr(vgg16, l.name)
+    #             l2 = getattr(self, l.name)
+    #             assert l1.W.size == l2.W.size
+    #             assert l1.b.size == l2.b.size
+    #             l2.W.data[...] = l1.W.data.reshape(l2.W.shape)[...]
+    #             l2.b.data[...] = l1.b.data.reshape(l2.b.shape)[...]
+
     def init_from_vgg16(self, vgg16):
         for l in self.children():
-            if l.name.startswith('conv'):
+            if l.name == 'conv1_1':
+                l1 = getattr(vgg16, l.name)
+                l2 = getattr(self, l.name)
+                np.copyto(l2.W.data[:, :3, :, :], l1.W.data)
+                np.copyto(l2.W.data[:, 3:6, :, :], l1.W.data)
+                np.copyto(l2.W.data[:, 6:9, :, :], l1.W.data)
+                np.copyto(l2.W.data[:, 9:12, :, :], l1.W.data)
+                np.copyto(l2.b.data, l1.b.data)
+            elif l.name.startswith('conv'):
                 l1 = getattr(vgg16, l.name)
                 l2 = getattr(self, l.name)
                 assert l1.W.shape == l2.W.shape
@@ -334,6 +385,7 @@ class FCN8sAtOnce(FCN8s):
                 assert l1.b.size == l2.b.size
                 l2.W.data[...] = l1.W.data.reshape(l2.W.shape)[...]
                 l2.b.data[...] = l1.b.data.reshape(l2.b.shape)[...]
+
 
     @classmethod
     def download(cls):
